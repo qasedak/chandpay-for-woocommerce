@@ -167,6 +167,7 @@ class Chandpay_Pay_Page {
 			$provider = Chandpay_Registry::get( $part['provider'] );
 			$done[]   = array(
 				'label'  => $provider ? $provider->label() : $part['provider'],
+				'logo'   => Chandpay_Gateway::provider_logo( $part['provider'] ),
 				'amount' => Chandpay_Service::format_rial( (int) $part['amount'], $order ),
 			);
 		}
@@ -176,10 +177,11 @@ class Chandpay_Pay_Page {
 		if ( $live ) {
 			$provider = Chandpay_Registry::get( $live['provider'] );
 			$open     = array(
-				'id'      => $live['id'],
-				'label'   => $provider ? $provider->label() : $live['provider'],
-				'amount'  => Chandpay_Service::format_rial( (int) $live['amount'], $order ),
-				'url'     => $live['payment_url'],
+				'id'     => $live['id'],
+				'label'  => $provider ? $provider->label() : $live['provider'],
+				'logo'   => Chandpay_Gateway::provider_logo( $live['provider'] ),
+				'amount' => Chandpay_Service::format_rial( (int) $live['amount'], $order ),
+				'url'    => $live['payment_url'],
 			);
 		}
 
@@ -190,6 +192,7 @@ class Chandpay_Pay_Page {
 			$failed   = array(
 				'id'     => $latest['id'],
 				'label'  => $provider ? $provider->label() : $latest['provider'],
+				'logo'   => Chandpay_Gateway::provider_logo( $latest['provider'] ),
 				'amount' => Chandpay_Service::format_rial( (int) $latest['amount'], $order ),
 				'error'  => $latest['last_error'],
 			);
@@ -197,16 +200,27 @@ class Chandpay_Pay_Page {
 
 		$providers = array();
 		foreach ( Chandpay_Registry::available() as $provider ) {
-			$min = (int) $provider->capabilities()['min_rial'];
 			$providers[] = array(
 				'id'    => $provider->id(),
 				'label' => $provider->label(),
-				'min'   => $min > 0 ? Chandpay_Service::format_rial( $min, $order ) : '',
+				'logo'  => Chandpay_Gateway::provider_logo( $provider->id() ),
 			);
+		}
+
+		$progress = 0;
+		if ( $total > 0 ) {
+			$progress = (int) floor( ( min( $captured, $total ) / $total ) * 100 );
+		}
+
+		$symbol = '';
+		if ( function_exists( 'get_woocommerce_currency_symbol' ) ) {
+			$symbol = get_woocommerce_currency_symbol( $order->get_currency() );
 		}
 
 		return array(
 			'order_number'    => $order->get_order_number(),
+			'progress'        => $progress,
+			'symbol'          => $symbol,
 			'total_html'      => Chandpay_Service::format_rial( $total, $order ),
 			'captured_html'   => Chandpay_Service::format_rial( $captured, $order ),
 			'remaining_html'  => Chandpay_Service::format_rial( $remaining, $order ),

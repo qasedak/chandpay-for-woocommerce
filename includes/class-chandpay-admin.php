@@ -19,6 +19,7 @@ class Chandpay_Admin {
 	 */
 	public static function init() {
 		add_action( 'add_meta_boxes', array( __CLASS__, 'meta_box' ) );
+		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue' ) );
 		add_filter( 'woocommerce_order_actions', array( __CLASS__, 'order_actions' ), 10, 2 );
 		add_action( 'woocommerce_order_action_chandpay_revert', array( __CLASS__, 'revert_action' ) );
 		add_action( 'admin_post_chandpay_revert', array( __CLASS__, 'revert_post' ) );
@@ -51,6 +52,25 @@ class Chandpay_Admin {
 	}
 
 	/**
+	 * Order-screen styles.
+	 *
+	 * @return void
+	 */
+	public static function enqueue() {
+		$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+		if ( ! $screen || ! in_array( $screen->id, array( 'shop_order', 'woocommerce_page_wc-orders' ), true ) ) {
+			return;
+		}
+
+		wp_enqueue_style(
+			'chandpay-admin',
+			CHANDPAY_URL . 'assets/css/admin.css',
+			array(),
+			chandpay_asset_version( 'assets/css/admin.css' )
+		);
+	}
+
+	/**
 	 * Box contents.
 	 *
 	 * @return void
@@ -61,22 +81,23 @@ class Chandpay_Admin {
 			return;
 		}
 		$state = Chandpay_Service::load( $order );
-		echo '<p><a href="' . esc_url( Chandpay_Service::pay_url( $order ) ) . '">' . esc_html__( 'Pay-remaining page', 'chandpay-for-woocommerce' ) . '</a></p>';
+		echo '<p class="chandpay-admin-link"><a href="' . esc_url( Chandpay_Service::pay_url( $order ) ) . '">' . esc_html__( 'Pay-remaining page', 'chandpay-for-woocommerce' ) . '</a></p>';
 
 		if ( ! $state['parts'] ) {
 			echo '<p>' . esc_html__( 'No payments have been started.', 'chandpay-for-woocommerce' ) . '</p>';
 			return;
 		}
 
-		echo '<ul>';
+		echo '<ul class="chandpay-admin-parts">';
 		foreach ( $state['parts'] as $part ) {
 			$provider = Chandpay_Registry::get( $part['provider'] );
 			$label    = $provider ? $provider->label() : $part['provider'];
-			echo '<li>';
-			echo esc_html( $label ) . ' — ' . wp_kses_post( Chandpay_Service::format_rial( (int) $part['amount'], $order ) );
-			echo '<br />' . esc_html( self::status_label( $part['status'] ) );
+			echo '<li class="is-' . esc_attr( sanitize_html_class( $part['status'] ) ) . '">';
+			echo '<span class="chandpay-admin-name">' . esc_html( $label ) . '</span>';
+			echo '<span class="chandpay-admin-amount">' . wp_kses_post( Chandpay_Service::format_rial( (int) $part['amount'], $order ) ) . '</span>';
+			echo '<span class="chandpay-admin-status">' . esc_html( self::status_label( $part['status'] ) ) . '</span>';
 			if ( ! empty( $part['last_error'] ) ) {
-				echo '<br />' . esc_html( $part['last_error'] );
+				echo '<span class="chandpay-admin-error">' . esc_html( $part['last_error'] ) . '</span>';
 			}
 			echo '</li>';
 		}
@@ -89,7 +110,7 @@ class Chandpay_Admin {
 			return;
 		}
 
-		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+		echo '<form class="chandpay-admin-revert" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 		wp_nonce_field( 'chandpay_revert_' . $order->get_id() );
 		echo '<input type="hidden" name="action" value="chandpay_revert" />';
 		echo '<input type="hidden" name="order_id" value="' . esc_attr( (string) $order->get_id() ) . '" />';

@@ -1,83 +1,474 @@
-.chandpay-wrap {
-	max-width: 40rem;
-	margin: 2rem auto;
-	padding: 1rem 1.25rem 3rem;
+.chandpay,
+.chandpay-checkout {
+	--cp-ink: #1f1a17;
+	--cp-muted: #5c534c;
+	--cp-line: #e6dfd6;
+	--cp-paper: #fffcf8;
+	--cp-wash: #f6f1ea;
+	--cp-accent: #8d3a12;
+	--cp-button: #1f1a17;
+	--cp-ok: #1c6b42;
+	--cp-ok-wash: #f3f8f5;
+	--cp-danger: #8f2d2d;
+	--cp-danger-wash: #fdf6f4;
+	--cp-info: #1e4d7b;
+	--cp-info-wash: #f4f7fb;
+	color: var(--cp-ink);
+	font-size: 1rem;
+	line-height: 1.55;
 }
 
-.chandpay-card {
-	border: 1px solid #d9d9d9;
-	padding: 1rem 1.25rem;
-	margin: 1rem 0;
+.chandpay {
+	box-sizing: border-box;
+	max-width: 36rem;
+	margin: 2rem auto 4rem;
+	padding: 0 1rem;
 }
 
+.chandpay *,
+.chandpay *::before,
+.chandpay *::after,
+.chandpay-checkout *,
+.chandpay-checkout *::before,
+.chandpay-checkout *::after {
+	box-sizing: border-box;
+}
+
+.chandpay-sheet {
+	background: var(--cp-paper);
+	border: 1px solid var(--cp-line);
+	border-top: 4px solid var(--cp-accent);
+	border-radius: 14px;
+	padding: 1.35rem 1.25rem 1.5rem;
+}
+
+.chandpay-hero {
+	margin-bottom: 1.1rem;
+}
+
+.chandpay-kicker {
+	margin: 0 0 0.2rem;
+	color: var(--cp-accent);
+	font-size: 0.82rem;
+	font-weight: 700;
+	letter-spacing: 0;
+}
+
+.chandpay h1,
+.chandpay h2,
+.chandpay p {
+	color: inherit;
+}
+
+.chandpay h1 {
+	margin: 0;
+	font-size: 1.45rem;
+	font-weight: 700;
+	line-height: 1.35;
+}
+
+.chandpay h2 {
+	margin: 0 0 0.35rem;
+	font-size: 1.05rem;
+	font-weight: 700;
+	line-height: 1.4;
+}
+
+.chandpay-lead,
+.chandpay-hint {
+	margin: 0 0 0.85rem;
+	color: var(--cp-muted);
+	font-size: 0.92rem;
+}
+
+.chandpay-summary {
+	padding-bottom: 0.35rem;
+}
+
+.chandpay-meter {
+	height: 8px;
+	overflow: hidden;
+	border-radius: 99px;
+	background: #e4d5c4;
+}
+
+.chandpay-meter span {
+	display: block;
+	height: 100%;
+	border-radius: inherit;
+	background: var(--cp-accent);
+}
+
+.chandpay-meter-label,
 .chandpay-row {
 	display: flex;
 	justify-content: space-between;
 	gap: 1rem;
-	margin: 0.4rem 0;
+	margin: 0.45rem 0;
+	font-size: 0.95rem;
+}
+
+.chandpay-meter-label {
+	margin-top: 0.4rem;
+	color: var(--cp-muted);
+	font-size: 0.82rem;
+}
+
+.chandpay-row strong {
+	font-weight: 600;
+	font-variant-numeric: tabular-nums;
+	text-align: end;
 }
 
 .chandpay-remaining {
-	font-size: 1.15rem;
-	font-weight: 600;
+	align-items: baseline;
+	margin-top: 0.75rem;
+	padding-top: 0.75rem;
+	border-top: 1px solid var(--cp-line);
+	font-size: 1rem;
 }
 
-.chandpay-error,
-.chandpay-info {
-	padding: 0.8rem 1rem;
+.chandpay-remaining strong,
+.chandpay-remaining .woocommerce-Price-amount {
+	color: var(--cp-ink);
+	font-size: 1.45rem;
+	font-weight: 700;
+	line-height: 1.2;
 }
 
-.chandpay-error {
-	background: #fde8e8;
+.chandpay-done-wrap,
+.chandpay-state {
+	margin-top: 1.15rem;
+	padding-top: 1.15rem;
+	border-top: 1px solid var(--cp-line);
 }
 
-.chandpay-info {
-	background: #eef6ff;
+.chandpay-done {
+	margin: 0.6rem 0 0;
+	padding: 0;
+	list-style: none;
+}
+
+.chandpay-done li,
+.chandpay-party {
+	display: flex;
+	align-items: center;
+	gap: 0.65rem;
+	margin: 0;
+	padding: 0.55rem 0;
+}
+
+.chandpay-done li + li {
+	border-top: 1px solid var(--cp-line);
+}
+
+.chandpay-party-name,
+.chandpay-choice-name {
+	font-weight: 700;
+}
+
+.chandpay-done li strong,
+.chandpay-party strong {
+	margin-inline-start: auto;
+	font-variant-numeric: tabular-nums;
+	text-align: end;
+}
+
+.chandpay-choices {
+	display: grid;
+	gap: 0.5rem;
+	margin: 0 0 1rem;
+	padding: 0;
+	border: 0;
+	min-inline-size: 0;
+}
+
+.chandpay-choices legend,
+.chandpay-checkout legend {
+	margin: 0 0 0.55rem;
+	padding: 0;
+	font-size: 0.95rem;
+	font-weight: 700;
+}
+
+.chandpay-choice {
+	display: flex;
+	align-items: center;
+	gap: 0.7rem;
+	margin: 0;
+	padding: 0.7rem 0.8rem;
+	border: 1px solid var(--cp-line);
+	border-radius: 10px;
+	background: #fff;
+	cursor: pointer;
+}
+
+.chandpay-choice:hover {
+	border-color: #d5cdc2;
+}
+
+.chandpay-choice:has(input:checked) {
+	border-color: var(--cp-accent);
+	background: #fff8f3;
+	box-shadow: inset -3px 0 0 var(--cp-accent);
+}
+
+.chandpay-choice:has(:focus-visible) {
+	outline: 2px solid var(--cp-accent);
+	outline-offset: 2px;
+}
+
+.chandpay-choice input {
+	width: 1.05rem;
+	height: 1.05rem;
+	min-width: 1.05rem;
+	margin: 0;
+	accent-color: var(--cp-accent);
+	flex: none;
+}
+
+.chandpay-logo {
+	display: block;
+	width: 2.5rem;
+	height: 2.5rem;
+	object-fit: contain;
+	flex: none;
+	border-radius: 8px;
+}
+
+.chandpay-choice-body {
+	display: flex;
+	flex: 1 1 auto;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 0.1rem;
+	min-width: 0;
+}
+
+.chandpay-field {
+	margin: 0 0 1rem;
+}
+
+.chandpay-field-head {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 0.75rem;
+	margin-bottom: 0.4rem;
+}
+
+.chandpay label,
+.chandpay-checkout label {
+	margin: 0;
+}
+
+.chandpay-field-head label {
+	font-weight: 700;
+}
+
+.chandpay-control {
+	display: flex;
+	align-items: center;
+	gap: 0.6rem;
+	padding-inline: 0.8rem;
+	border: 1px solid var(--cp-line);
+	border-radius: 10px;
+	background: #fff;
+}
+
+.chandpay-control:focus-within {
+	border-color: var(--cp-accent);
+	box-shadow: 0 0 0 3px rgba(141, 58, 18, 0.16);
+}
+
+.chandpay .chandpay-control input[type="text"],
+.chandpay-checkout .chandpay-control input[type="text"] {
+	width: auto;
+	max-width: none;
+	min-width: 0;
+	flex: 1 1 auto;
+	margin: 0;
+	padding: 0.75rem 0;
+	border: 0;
+	border-radius: 0;
+	background: transparent;
+	box-shadow: none;
+	color: inherit;
+	font: inherit;
+	font-size: 1.05rem;
+	font-variant-numeric: tabular-nums;
+}
+
+.chandpay-control input:focus {
+	outline: 0;
+}
+
+.chandpay-unit {
+	color: var(--cp-muted);
+	font-size: 0.85rem;
+	white-space: nowrap;
+}
+
+.chandpay-remainder {
+	display: flex;
+	justify-content: space-between;
+	gap: 0.75rem;
+	margin: 0.55rem 0 0;
+	color: var(--cp-muted);
+	font-size: 0.88rem;
+}
+
+.chandpay-remainder strong {
+	color: var(--cp-ink);
+	font-variant-numeric: tabular-nums;
+}
+
+.chandpay-remainder.is-over,
+.chandpay-remainder.is-over strong,
+.chandpay-remainder.is-invalid,
+.chandpay-remainder.is-invalid strong {
+	color: var(--cp-danger);
+}
+
+.chandpay-remainder.is-over,
+.chandpay-remainder.is-invalid {
+	margin-top: 0.55rem;
+	padding: 0.45rem 0.7rem;
+	border-radius: 8px;
+	background: var(--cp-danger-wash);
+}
+
+.chandpay-note {
+	margin: 0.85rem 0 0;
+	padding: 0.75rem 0.85rem;
+	border-radius: 10px;
+	font-size: 0.92rem;
+}
+
+.chandpay-note.is-error {
+	background: var(--cp-danger-wash);
+	color: var(--cp-danger);
+}
+
+.chandpay-note.is-info {
+	background: var(--cp-info-wash);
+	color: var(--cp-info);
+}
+
+.chandpay-note.is-ok {
+	background: var(--cp-ok-wash);
+	color: var(--cp-ok);
 }
 
 .chandpay-actions {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 0.75rem;
-	align-items: center;
+	display: grid;
+	gap: 0.6rem;
+	margin-top: 0.9rem;
 }
 
 .chandpay-actions form {
 	margin: 0;
 }
 
-.chandpay-wrap fieldset {
-	border: 0;
-	margin: 0 0 1rem;
-	padding: 0;
-}
-
-.chandpay-wrap label {
-	display: block;
-	margin: 0.4rem 0;
-}
-
-.chandpay-wrap input[type="text"] {
+.chandpay .chandpay-button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
 	width: 100%;
-	max-width: 18rem;
-	padding: 0.45rem 0.6rem;
-}
-
-.chandpay-wrap button,
-.chandpay-button {
-	display: inline-block;
-	padding: 0.55rem 1rem;
+	margin: 0;
+	padding: 0.8rem 1rem;
+	border: 1px solid var(--cp-button);
+	border-radius: 10px;
+	background: var(--cp-button);
+	box-shadow: none;
+	color: #fff;
+	font: inherit;
+	font-weight: 700;
+	line-height: 1.4;
+	text-align: center;
 	text-decoration: none;
 	cursor: pointer;
 }
 
-.chandpay-checkout-fields label {
-	display: block;
-	margin: 0.4rem 0;
+.chandpay .chandpay-button:hover,
+.chandpay .chandpay-button:focus {
+	background: #000;
+	border-color: #000;
+	color: #fff;
 }
 
-.chandpay-checkout-fields input[type="text"] {
-	width: 100%;
-	max-width: 16rem;
-	padding: 0.4rem 0.55rem;
+.chandpay .chandpay-button:focus-visible {
+	outline: 2px solid var(--cp-accent);
+	outline-offset: 2px;
 }
+
+.chandpay .chandpay-button-ghost {
+	background: transparent;
+	color: var(--cp-ink);
+}
+
+.chandpay .chandpay-button-ghost:hover,
+.chandpay .chandpay-button-ghost:focus {
+	background: var(--cp-wash);
+	border-color: var(--cp-ink);
+	color: var(--cp-ink);
+}
+
+.chandpay-text-button {
+	margin: 0;
+	padding: 0;
+	border: 0;
+	background: none;
+	box-shadow: none;
+	color: var(--cp-accent);
+	font: inherit;
+	font-size: 0.85rem;
+	font-weight: 700;
+	line-height: 1.4;
+	text-decoration: underline;
+	text-underline-offset: 0.18em;
+	cursor: pointer;
+}
+
+.chandpay-text-button:hover,
+.chandpay-text-button:focus {
+	color: var(--cp-button);
+}
+
+.chandpay-text-button:focus-visible {
+	outline: 2px solid var(--cp-accent);
+	outline-offset: 2px;
+}
+
+.chandpay-checkout {
+	margin-top: 0.35rem;
+}
+
+.chandpay-checkout .chandpay-lead {
+	margin-bottom: 0.8rem;
+}
+
+.chandpay-checkout .chandpay-choices {
+	margin-bottom: 0.85rem;
+}
+
+.chandpay-checkout .chandpay-field {
+	margin-bottom: 0.2rem;
+}
+
+.woocommerce-checkout .chandpay-checkout .chandpay-control input[type="text"],
+.wc-block-components-radio-control-accordion-content .chandpay-checkout .chandpay-control input[type="text"] {
+	width: auto !important;
+}
+
+.woocommerce-checkout .chandpay-checkout .chandpay-choice input[type="radio"],
+.wc-block-components-radio-control-accordion-content .chandpay-checkout .chandpay-choice input[type="radio"] {
+	width: 1.05rem !important;
+}
+
+@media (min-width: 520px) {
+	.chandpay-actions.is-split {
+		grid-template-columns: 1fr 1fr;
+	}
+}
+

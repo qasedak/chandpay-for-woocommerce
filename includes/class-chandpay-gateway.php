@@ -49,39 +49,19 @@ class Chandpay_Gateway extends WC_Payment_Gateway {
 	 * @return void
 	 */
 	public function payment_fields() {
-		if ( $this->description ) {
-			echo '<p>' . wp_kses_post( $this->description ) . '</p>';
-		}
-
-		$providers = self::checkout_provider_rows();
-		if ( ! $providers ) {
-			echo '<p>' . esc_html__( 'No installment provider is configured.', 'chandpay-for-woocommerce' ) . '</p>';
-			return;
-		}
-
-		list( $total_rial, $currency ) = $this->payable_context();
-		$remaining                     = Chandpay_Money::store_string( $total_rial, $currency, Chandpay_Service::decimals() );
-
-		echo '<div id="chandpay-start" class="chandpay-checkout-fields" data-remaining="' . esc_attr( $remaining ) . '">';
-		foreach ( $providers as $provider ) {
-			echo '<label class="chandpay-provider-choice">';
-			echo '<input type="radio" name="chandpay_provider" value="' . esc_attr( $provider['id'] ) . '" required /> ';
-			echo esc_html( $provider['label'] );
-			if ( '' !== $provider['minLabel'] ) {
-				echo ' <small>' . esc_html(
-					sprintf(
-						/* translators: %s: formatted minimum amount */
-						__( 'حداقل %s', 'chandpay-for-woocommerce' ),
-						$provider['minLabel']
-					)
-				) . '</small>';
+		$providers    = self::checkout_provider_rows();
+		$description  = $this->description;
+		$remaining    = '';
+		$symbol       = '';
+		if ( $providers ) {
+			list( $total_rial, $currency ) = $this->payable_context();
+			$remaining                     = Chandpay_Money::store_string( $total_rial, $currency, Chandpay_Service::decimals() );
+			if ( function_exists( 'get_woocommerce_currency_symbol' ) ) {
+				$symbol = get_woocommerce_currency_symbol( $currency );
 			}
-			echo '</label>';
 		}
-		echo '<label for="chandpay-amount">' . esc_html__( 'مبلغ این بخش', 'chandpay-for-woocommerce' ) . '</label>';
-		echo '<input id="chandpay-amount" name="chandpay_amount" type="text" inputmode="decimal" required />';
-		echo '<p>' . esc_html__( 'باقی‌مانده بعد از این مبلغ:', 'chandpay-for-woocommerce' ) . ' <strong id="chandpay-live-remaining">' . esc_html( $remaining ) . '</strong></p>';
-		echo '</div>';
+
+		include CHANDPAY_PATH . 'templates/checkout-fields.php';
 	}
 
 	/**
@@ -320,32 +300,63 @@ class Chandpay_Gateway extends WC_Payment_Gateway {
 	}
 
 	/**
-	 * Copy block-checkout payment fields into POST for process_payment().
+	 * Copy this gateway's block-checkout fields into POST for process_payment().
+	 *
+	 * Other payment methods on the same Store API hook are left alone.
 	 *
 	 * @param object $context Payment context.
 	 * @return void
 	 */
 	public function copy_store_api_payment_data( $context ) {
+		if ( 'chandpay' !== $this->context_payment_method( $context ) ) {
+			return;
+		}
+
 		$data = array();
-		if ( is_object( $context ) && method_exists( $context, 'get_payment_data' ) ) {
+		if ( method_exists( $context, 'get_payment_data' ) ) {
 			$data = $context->get_payment_data();
-		} elseif ( is_object( $context ) && isset( $context->payment_data ) ) {
+		} elseif ( isset( $context->payment_data ) ) {
 			$data = $context->payment_data;
 		}
 		if ( ! is_array( $data ) ) {
 			return;
 		}
 
+		$allowed = array(
+			'chandpay_provider' => true,
+			'chandpay_amount'   => true,
+		);
+
 		foreach ( $data as $key => $value ) {
 			if ( is_object( $value ) && isset( $value->key ) ) {
 				$key   = $value->key;
 				$value = isset( $value->value ) ? $value->value : '';
 			}
-			if ( ! is_string( $key ) || ! is_scalar( $value ) ) {
+			if ( ! is_string( $key ) || ! isset( $allowed[ $key ] ) || ! is_scalar( $value ) ) {
 				continue;
 			}
 			$_POST[ $key ] = (string) $value;
 		}
+	}
+
+	/**
+	 * Payment method id on a Store API payment context.
+	 *
+	 * @param object $context Payment context.
+	 * @return string
+	 */
+	private function context_payment_method( $context ) {
+		if ( ! is_object( $context ) ) {
+			return '';
+		}
+		if ( method_exists( $context, 'get_payment_method' ) ) {
+			return (string) $context->get_payment_method();
+		}
+		if ( isset( $context->payment_method ) ) {
+			return (string) $context->payment_method;
+		}
+
+		return '';
 	}
 
 	/**
@@ -366,12 +377,32 @@ class Chandpay_Gateway extends WC_Payment_Gateway {
 			$rows[] = array(
 				'id'       => $provider->id(),
 				'label'    => $provider->label(),
+				'logo'     => self::provider_logo( $provider->id() ),
 				'min'      => $min,
 				'minLabel' => $label,
 			);
 		}
 
 		return $rows;
+	}
+
+	/**
+	 * Logo URL for a known provider. Empty when the id has no logo.
+	 *
+	 * @param string $id Provider id.
+	 * @return string
+	 */
+	public static function provider_logo( $id ) {
+		$files = array(
+			'digipay'  => 'assets/images/digipay.png',
+			'snapppay' => 'assets/images/snapppay.jpg',
+			'torobpay' => 'assets/images/torobpay.png',
+		);
+		if ( ! isset( $files[ $id ] ) ) {
+			return '';
+		}
+
+		return CHANDPAY_URL . $files[ $id ];
 	}
 
 	/**

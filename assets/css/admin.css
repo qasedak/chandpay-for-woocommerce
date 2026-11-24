@@ -1,0 +1,59 @@
+.chandpay-admin-link {
+	margin: 0 0 10px;
+}
+
+.chandpay-admin-parts {
+	margin: 0 0 12px;
+	padding: 0;
+	list-style: none;
+}
+
+.chandpay-admin-parts li {
+	margin: 0 0 8px;
+	padding: 8px 10px;
+	background: #f6f7f7;
+	border-inline-start: 3px solid #8c8f94;
+}
+
+.chandpay-admin-parts li.is-verified,
+.chandpay-admin-parts li.is-settled {
+	border-color: #1e7a3a;
+}
+
+.chandpay-admin-parts li.is-failed {
+	border-color: #b32d2e;
+}
+
+.chandpay-admin-parts li.is-started {
+	border-color: #2271b1;
+}
+
+.chandpay-admin-name {
+	display: block;
+	font-weight: 600;
+}
+
+.chandpay-admin-amount,
+.chandpay-admin-status,
+.chandpay-admin-error {
+	display: block;
+}
+
+.chandpay-admin-status {
+	color: #50575e;
+	font-size: 12px;
+}
+
+.chandpay-admin-error {
+	margin-top: 2px;
+	color: #8a2424;
+}
+
+.chandpay-admin-revert {
+	margin: 4px 0 0;
+}
+
+.chandpay-admin-revert .button {
+	width: 100%;
+	text-align: center;
+}
