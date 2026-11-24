@@ -1,6 +1,6 @@
 <?php
 /**
- * Checkout block payment method. The amount UI lives on the pay page.
+ * Checkout block payment method. The first part is chosen in the payment box.
  *
  * @package Chandpay
  */
@@ -82,10 +82,22 @@ final class Chandpay_Blocks extends AbstractPaymentMethodType {
 	 * @return array
 	 */
 	public function get_payment_method_data() {
+		$total = '';
+		if ( function_exists( 'WC' ) && WC()->cart && function_exists( 'get_woocommerce_currency' ) ) {
+			$currency = get_woocommerce_currency();
+			$total    = Chandpay_Money::store_string(
+				Chandpay_Money::to_rial( WC()->cart->get_total( 'edit' ), $currency ),
+				$currency,
+				Chandpay_Service::decimals()
+			);
+		}
+
 		return array(
 			'title'       => $this->get_setting( 'title', 'پرداخت ترکیبی' ),
 			'description' => $this->get_setting( 'description', '' ),
 			'supports'    => array( 'products' ),
+			'providers'   => Chandpay_Gateway::checkout_provider_rows(),
+			'total'       => $total,
 		);
 	}
 }

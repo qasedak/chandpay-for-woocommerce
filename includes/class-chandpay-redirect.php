@@ -45,18 +45,18 @@ class Chandpay_Redirect {
 	}
 
 	/**
-	 * Redirect to a provider after the host check.
+	 * Allow a checked provider URL through wp_safe_redirect().
 	 *
 	 * @param string $url   Destination.
 	 * @param array  $hosts Allowed hosts.
 	 * @return bool False when the host is rejected.
 	 */
-	public static function away( $url, array $hosts ) {
+	public static function permit( $url, array $hosts ) {
 		if ( ! self::allowed( $url, $hosts ) ) {
 			return false;
 		}
 
-		$host = (string) wp_parse_url( $url, PHP_URL_HOST );
+		$host = strtolower( (string) wp_parse_url( $url, PHP_URL_HOST ) );
 		add_filter(
 			'allowed_redirect_hosts',
 			static function ( $list ) use ( $host ) {
@@ -64,6 +64,22 @@ class Chandpay_Redirect {
 				return $list;
 			}
 		);
+
+		return true;
+	}
+
+	/**
+	 * Redirect to a provider after the host check.
+	 *
+	 * @param string $url   Destination.
+	 * @param array  $hosts Allowed hosts.
+	 * @return bool False when the host is rejected.
+	 */
+	public static function away( $url, array $hosts ) {
+		if ( ! self::permit( $url, $hosts ) ) {
+			return false;
+		}
+
 		wp_safe_redirect( $url );
 		exit;
 	}

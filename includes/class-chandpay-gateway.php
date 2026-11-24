@@ -1,6 +1,6 @@
 <?php
 /**
- * WooCommerce gateway. Checkout only creates the order and opens the pay page.
+ * WooCommerce gateway. The first part is chosen at checkout.
  *
  * @package Chandpay
  */
@@ -26,7 +26,7 @@ class Chandpay_Gateway extends WC_Payment_Gateway {
 		$this->id                 = 'chandpay';
 		$this->method_title       = __( 'Chandpay', 'chandpay-for-woocommerce' );
 		$this->method_description = __( 'Let a shopper pay one order with several installment providers, one part at a time.', 'chandpay-for-woocommerce' );
-		$this->has_fields         = false;
+		$this->has_fields         = true;
 		$this->supports           = array( 'products' );
 
 		$this->init_form_fields();
@@ -37,8 +37,79 @@ class Chandpay_Gateway extends WC_Payment_Gateway {
 
 		if ( ! self::$hooked ) {
 			add_action( 'woocommerce_update_options_payment_gateways_' . $this->id, array( $this, 'process_admin_options' ) );
+			add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_checkout_assets' ) );
+			add_action( 'woocommerce_rest_checkout_process_payment_with_context', array( $this, 'copy_store_api_payment_data' ), 5, 2 );
 			self::$hooked = true;
 		}
+	}
+
+	/**
+	 * First provider and amount, revealed when Chandpay is selected.
+	 *
+	 * @return void
+	 */
+	public function payment_fields() {
+		if ( $this->description ) {
+			echo '<p>' . wp_kses_post( $this->description ) . '</p>';
+		}
+
+		$providers = self::checkout_provider_rows();
+		if ( ! $providers ) {
+			echo '<p>' . esc_html__( 'No installment provider is configured.', 'chandpay-for-woocommerce' ) . '</p>';
+			return;
+		}
+
+		list( $total_rial, $currency ) = $this->payable_context();
+		$remaining                     = Chandpay_Money::store_string( $total_rial, $currency, Chandpay_Service::decimals() );
+
+		echo '<div id="chandpay-start" class="chandpay-checkout-fields" data-remaining="' . esc_attr( $remaining ) . '">';
+		foreach ( $providers as $provider ) {
+			echo '<label class="chandpay-provider-choice">';
+			echo '<input type="radio" name="chandpay_provider" value="' . esc_attr( $provider['id'] ) . '" required /> ';
+			echo esc_html( $provider['label'] );
+			if ( '' !== $provider['minLabel'] ) {
+				echo ' <small>' . esc_html(
+					sprintf(
+						/* translators: %s: formatted minimum amount */
+						__( 'حداقل %s', 'chandpay-for-woocommerce' ),
+						$provider['minLabel']
+					)
+				) . '</small>';
+			}
+			echo '</label>';
+		}
+		echo '<label for="chandpay-amount">' . esc_html__( 'مبلغ این بخش', 'chandpay-for-woocommerce' ) . '</label>';
+		echo '<input id="chandpay-amount" name="chandpay_amount" type="text" inputmode="decimal" required />';
+		echo '<p>' . esc_html__( 'باقی‌مانده بعد از این مبلغ:', 'chandpay-for-woocommerce' ) . ' <strong id="chandpay-live-remaining">' . esc_html( $remaining ) . '</strong></p>';
+		echo '</div>';
+	}
+
+	/**
+	 * Reject a classic checkout that has no usable first payment.
+	 *
+	 * Block checkout checks the same rules in process_payment().
+	 *
+	 * @return bool
+	 */
+	public function validate_fields() {
+		if ( $this->is_store_api_request() ) {
+			return true;
+		}
+
+		$choice = $this->posted_choice();
+		if ( is_wp_error( $choice ) ) {
+			wc_add_notice( $choice->get_error_message(), 'error' );
+			return false;
+		}
+
+		list( $total_rial, $currency ) = $this->payable_context();
+		$error                         = $this->choice_error( $choice['provider'], $choice['amount'], $total_rial, $currency );
+		if ( is_wp_error( $error ) ) {
+			wc_add_notice( $error->get_error_message(), 'error' );
+			return false;
+		}
+
+		return true;
 	}
 
 	/**
@@ -63,8 +134,8 @@ class Chandpay_Gateway extends WC_Payment_Gateway {
 			'description'             => array(
 				'title'       => __( 'Description', 'chandpay-for-woocommerce' ),
 				'type'        => 'textarea',
-				'description' => __( 'Shown under the title. The shopper chooses providers on the next page.', 'chandpay-for-woocommerce' ),
-				'default'     => 'مبلغ سفارش را با چند درگاه اقساطی پرداخت می‌کنید. هر بار یک بخش را انتخاب و پرداخت می‌کنید.',
+				'description' => __( 'Shown under the title. The shopper chooses the first provider in this payment box.', 'chandpay-for-woocommerce' ),
+				'default'     => 'بخش اول را همین‌جا انتخاب می‌کنید و به درگاه می‌روید. اگر هنوز مبلغی مانده باشد، بعد از بازگشت روش بعدی را انتخاب می‌کنید.',
 			),
 			'provider_torobpay'       => array(
 				'title'   => 'ترب‌پی',
@@ -186,7 +257,9 @@ class Chandpay_Gateway extends WC_Payment_Gateway {
 	}
 
 	/**
-	 * Create nothing at the provider. Send the shopper to the pay page.
+	 * Place the order, start the first part, and send the shopper to that provider.
+	 *
+	 * A provider error still places the order and opens the pay-remaining page.
 	 *
 	 * @param int $order_id Order id.
 	 * @return array
@@ -194,24 +267,233 @@ class Chandpay_Gateway extends WC_Payment_Gateway {
 	public function process_payment( $order_id ) {
 		$order = wc_get_order( $order_id );
 		if ( ! $order ) {
-			$message = __( 'The order could not be found.', 'chandpay-for-woocommerce' );
-			if ( function_exists( 'wc_add_notice' ) ) {
-				wc_add_notice( $message, 'error' );
-			}
-			return array(
-				'result'   => 'failure',
-				'message'  => $message,
-				'messages' => $message,
-			);
+			return $this->failure( __( 'The order could not be found.', 'chandpay-for-woocommerce' ) );
+		}
+
+		$choice = $this->posted_choice();
+		if ( is_wp_error( $choice ) ) {
+			return $this->failure( $choice->get_error_message() );
+		}
+
+		$error = $this->choice_error( $choice['provider'], $choice['amount'], Chandpay_Service::payable_rial( $order ), $order->get_currency() );
+		if ( is_wp_error( $error ) ) {
+			return $this->failure( $error->get_error_message() );
 		}
 
 		if ( function_exists( 'WC' ) && WC()->cart ) {
 			WC()->cart->empty_cart();
 		}
 
+		$started = Chandpay_Service::start( $order, $choice['provider'], $choice['amount'] );
+		if ( is_wp_error( $started ) || empty( $started['redirect'] ) || empty( $started['hosts'] ) || ! Chandpay_Redirect::permit( $started['redirect'], $started['hosts'] ) ) {
+			$message = is_wp_error( $started ) ? $started->get_error_message() : __( 'The payment page address was rejected.', 'chandpay-for-woocommerce' );
+			Chandpay_Service::flash( $order, 'error', $message );
+			return array(
+				'result'   => 'success',
+				'redirect' => Chandpay_Service::pay_url( $order ),
+			);
+		}
+
 		return array(
 			'result'   => 'success',
-			'redirect' => Chandpay_Service::pay_url( $order ),
+			'redirect' => $started['redirect'],
 		);
+	}
+
+	/**
+	 * Checkout styles for the first-payment fields.
+	 *
+	 * @return void
+	 */
+	public function enqueue_checkout_assets() {
+		$is_checkout  = function_exists( 'is_checkout' ) && is_checkout();
+		$is_order_pay = function_exists( 'is_wc_endpoint_url' ) && is_wc_endpoint_url( 'order-pay' );
+		if ( ! $is_checkout && ! $is_order_pay ) {
+			return;
+		}
+		if ( function_exists( 'is_order_received_page' ) && is_order_received_page() ) {
+			return;
+		}
+
+		wp_enqueue_style( 'chandpay-pay', CHANDPAY_URL . 'assets/css/pay.css', array(), chandpay_asset_version( 'assets/css/pay.css' ) );
+		wp_enqueue_script( 'chandpay-pay', CHANDPAY_URL . 'assets/js/pay.js', array(), chandpay_asset_version( 'assets/js/pay.js' ), true );
+	}
+
+	/**
+	 * Copy block-checkout payment fields into POST for process_payment().
+	 *
+	 * @param object $context Payment context.
+	 * @return void
+	 */
+	public function copy_store_api_payment_data( $context ) {
+		$data = array();
+		if ( is_object( $context ) && method_exists( $context, 'get_payment_data' ) ) {
+			$data = $context->get_payment_data();
+		} elseif ( is_object( $context ) && isset( $context->payment_data ) ) {
+			$data = $context->payment_data;
+		}
+		if ( ! is_array( $data ) ) {
+			return;
+		}
+
+		foreach ( $data as $key => $value ) {
+			if ( is_object( $value ) && isset( $value->key ) ) {
+				$key   = $value->key;
+				$value = isset( $value->value ) ? $value->value : '';
+			}
+			if ( ! is_string( $key ) || ! is_scalar( $value ) ) {
+				continue;
+			}
+			$_POST[ $key ] = (string) $value;
+		}
+	}
+
+	/**
+	 * Providers the shopper can pick, with a plain minimum label.
+	 *
+	 * @return array
+	 */
+	public static function checkout_provider_rows() {
+		$rows     = array();
+		$currency = function_exists( 'get_woocommerce_currency' ) ? get_woocommerce_currency() : 'IRT';
+		foreach ( Chandpay_Registry::available() as $provider ) {
+			$min   = (int) $provider->capabilities()['min_rial'];
+			$label = '';
+			if ( $min > 0 && function_exists( 'wc_price' ) ) {
+				$store = (float) Chandpay_Money::store_string( $min, $currency, Chandpay_Service::decimals() );
+				$label = wp_strip_all_tags( wc_price( $store, array( 'currency' => $currency ) ) );
+			}
+			$rows[] = array(
+				'id'       => $provider->id(),
+				'label'    => $provider->label(),
+				'min'      => $min,
+				'minLabel' => $label,
+			);
+		}
+
+		return $rows;
+	}
+
+	/**
+	 * Provider id and store-currency amount from checkout.
+	 *
+	 * @return array|WP_Error
+	 */
+	private function posted_choice() {
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- WooCommerce checkout nonce is checked before payment.
+		$provider = isset( $_POST['chandpay_provider'] ) ? sanitize_key( wp_unslash( $_POST['chandpay_provider'] ) ) : '';
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- WooCommerce checkout nonce is checked before payment.
+		$raw = isset( $_POST['chandpay_amount'] ) ? wp_unslash( $_POST['chandpay_amount'] ) : '';
+		if ( ! is_string( $raw ) ) {
+			$raw = '';
+		}
+		if ( '' === $provider ) {
+			return new WP_Error( 'chandpay_provider', __( 'Choose the first payment method.', 'chandpay-for-woocommerce' ) );
+		}
+
+		$entered = Chandpay_Money::parse_amount( $raw );
+		if ( null === $entered ) {
+			return new WP_Error( 'chandpay_amount', __( 'Enter the amount for this payment.', 'chandpay-for-woocommerce' ) );
+		}
+
+		$adapter = Chandpay_Registry::get( $provider );
+		if ( ! $adapter || ! $adapter->is_available() ) {
+			return new WP_Error( 'chandpay_provider', __( 'That payment method is not available.', 'chandpay-for-woocommerce' ) );
+		}
+
+		return array(
+			'provider' => $provider,
+			'amount'   => $entered,
+		);
+	}
+
+	/**
+	 * Amount rules for the first part, before a provider token is created.
+	 *
+	 * @param string $provider_id Provider id.
+	 * @param float  $entered     Store amount.
+	 * @param int    $total_rial  Payable total in rial.
+	 * @param string $currency    Store currency.
+	 * @return true|WP_Error
+	 */
+	private function choice_error( $provider_id, $entered, $total_rial, $currency ) {
+		$provider = Chandpay_Registry::get( $provider_id );
+		if ( ! $provider ) {
+			return new WP_Error( 'chandpay_provider', __( 'That payment method is not available.', 'chandpay-for-woocommerce' ) );
+		}
+
+		$rial = Chandpay_Money::charge_rial( $entered, (int) $total_rial, $currency, Chandpay_Service::decimals() );
+		if ( $rial < 1 || $rial > (int) $total_rial ) {
+			return new WP_Error( 'chandpay_amount', __( 'Enter an amount up to the remaining balance.', 'chandpay-for-woocommerce' ) );
+		}
+
+		$min = (int) $provider->capabilities()['min_rial'];
+		if ( $min > 0 && $rial < $min ) {
+			$formatted = (string) $min;
+			if ( function_exists( 'wc_price' ) ) {
+				$store     = (float) Chandpay_Money::store_string( $min, $currency, Chandpay_Service::decimals() );
+				$formatted = wp_strip_all_tags( wc_price( $store, array( 'currency' => $currency ) ) );
+			}
+			return new WP_Error(
+				'chandpay_min',
+				sprintf(
+					/* translators: %s: formatted minimum amount */
+					__( 'This provider needs at least %s.', 'chandpay-for-woocommerce' ),
+					$formatted
+				)
+			);
+		}
+
+		return true;
+	}
+
+	/**
+	 * Cart total during checkout, or the order total on the pay-for-order page.
+	 *
+	 * @return array rial total and currency.
+	 */
+	private function payable_context() {
+		if ( function_exists( 'is_wc_endpoint_url' ) && is_wc_endpoint_url( 'order-pay' ) ) {
+			$order_id = absint( get_query_var( 'order-pay' ) );
+			$order    = $order_id ? wc_get_order( $order_id ) : false;
+			if ( $order instanceof WC_Order ) {
+				return array( Chandpay_Service::payable_rial( $order ), $order->get_currency() );
+			}
+		}
+
+		$currency = get_woocommerce_currency();
+		$amount   = ( function_exists( 'WC' ) && WC()->cart ) ? WC()->cart->get_total( 'edit' ) : 0;
+
+		return array( Chandpay_Money::to_rial( $amount, $currency ), $currency );
+	}
+
+	/**
+	 * Checkout failure payload for classic and block checkout.
+	 *
+	 * @param string $message Shopper-facing error.
+	 * @return array
+	 */
+	private function failure( $message ) {
+		if ( function_exists( 'wc_add_notice' ) && ! $this->is_store_api_request() ) {
+			wc_add_notice( $message, 'error' );
+		}
+
+		return array(
+			'result'   => 'failure',
+			'message'  => $message,
+			'messages' => $message,
+		);
+	}
+
+	/**
+	 * Whether this request is the checkout Store API.
+	 *
+	 * @return bool
+	 */
+	private function is_store_api_request() {
+		return function_exists( 'WC' )
+			&& is_object( WC() )
+			&& method_exists( WC(), 'is_store_api_request' )
+			&& WC()->is_store_api_request();
 	}
 }

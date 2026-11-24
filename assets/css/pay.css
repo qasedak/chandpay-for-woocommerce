@@ -70,3 +70,14 @@
 	text-decoration: none;
 	cursor: pointer;
 }
+
+.chandpay-checkout-fields label {
+	display: block;
+	margin: 0.4rem 0;
+}
+
+.chandpay-checkout-fields input[type="text"] {
+	width: 100%;
+	max-width: 16rem;
+	padding: 0.4rem 0.55rem;
+}

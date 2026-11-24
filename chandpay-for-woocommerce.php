@@ -25,6 +25,21 @@ define( 'CHANDPAY_PATH', plugin_dir_path( __FILE__ ) );
 define( 'CHANDPAY_URL', plugin_dir_url( __FILE__ ) );
 
 /**
+ * Asset version from the file's modification time.
+ *
+ * @param string $relative Path relative to the plugin root.
+ * @return string
+ */
+function chandpay_asset_version( $relative ) {
+	$path = CHANDPAY_PATH . ltrim( $relative, '/' );
+	if ( file_exists( $path ) ) {
+		return (string) filemtime( $path );
+	}
+
+	return CHANDPAY_VERSION;
+}
+
+/**
  * Load plugin classes once WooCommerce is available.
  *
  * @return void

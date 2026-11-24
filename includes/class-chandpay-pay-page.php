@@ -74,8 +74,8 @@ class Chandpay_Pay_Page {
 		$order = wc_get_order( $order->get_id() );
 		$view  = self::view( $order, $prepared['state'] );
 
-		wp_enqueue_style( 'chandpay-pay', CHANDPAY_URL . 'assets/css/pay.css', array(), CHANDPAY_VERSION );
-		wp_enqueue_script( 'chandpay-pay', CHANDPAY_URL . 'assets/js/pay.js', array(), CHANDPAY_VERSION, true );
+		wp_enqueue_style( 'chandpay-pay', CHANDPAY_URL . 'assets/css/pay.css', array(), chandpay_asset_version( 'assets/css/pay.css' ) );
+		wp_enqueue_script( 'chandpay-pay', CHANDPAY_URL . 'assets/js/pay.js', array(), chandpay_asset_version( 'assets/js/pay.js' ), true );
 
 		status_header( 200 );
 		if ( function_exists( 'get_header' ) ) {

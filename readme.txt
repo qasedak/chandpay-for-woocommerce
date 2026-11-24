@@ -11,7 +11,7 @@ Pay one WooCommerce order across several installment providers.
 
 == Description ==
 
-Chandpay adds one checkout method. The shopper then pays the order in parts. Each part is sent to TorobPay, SnappPay, or DigiPay through an adapter in this plugin.
+Chandpay adds one checkout method. The shopper chooses the first installment provider and amount there, pays that provider, and returns to a pay-remaining page only while part of the order is still unpaid.
 
 The order stays Pending until the first part is verified, On hold until the total is collected, then Processing after every part is settled. Revert on the order screen voids the captured parts and cancels the order.
 

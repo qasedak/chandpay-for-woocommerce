@@ -439,6 +439,8 @@ class Chandpay_Service {
 
 				self::save( $order, $state );
 				if ( Chandpay_Ledger::has_capture( $state ) ) {
+					$state['phase'] = 'collecting';
+					self::save( $order, $state );
 					$order->add_order_note( __( 'Chandpay could not void every payment, so the order was not cancelled.', 'chandpay-for-woocommerce' ) . ' ' . implode( ' | ', $errors ) );
 					$order->save();
 					self::sync( $order, $state );
@@ -549,6 +551,18 @@ class Chandpay_Service {
 	 */
 	public static function load( WC_Order $order ) {
 		return Chandpay_Ledger::normalize( $order->get_meta( Chandpay_Ledger::META_KEY, true ) );
+	}
+
+	/**
+	 * Rial still to collect, after expired holds are released in memory.
+	 *
+	 * @param WC_Order $order Order.
+	 * @return int
+	 */
+	public static function payable_rial( WC_Order $order ) {
+		$state = Chandpay_Ledger::expire_stale( self::load( $order ), time() );
+
+		return Chandpay_Ledger::remaining( $state, self::order_rial( $order ) );
 	}
 
 	/**
@@ -773,18 +787,26 @@ class Chandpay_Service {
 			return call_user_func( $callback );
 		}
 
-		$key = 'chandpay_lock_' . absint( $order_id );
-		$got = false;
+		$key   = 'chandpay_lock_' . absint( $order_id );
+		$token = function_exists( 'wp_generate_password' ) ? wp_generate_password( 12, false, false ) : bin2hex( random_bytes( 6 ) );
+		$got   = false;
 		for ( $attempt = 0; $attempt < 15; $attempt++ ) {
-			if ( add_option( $key, (string) ( time() + 25 ), '', false ) ) {
+			$value = $token . '|' . ( time() + 25 );
+			if ( add_option( $key, $value, '', false ) ) {
 				$got = true;
 				break;
 			}
-			$until = (int) get_option( $key, 0 );
+			$current = (string) get_option( $key, '' );
+			$until   = 0;
+			if ( false !== strpos( $current, '|' ) ) {
+				$until = (int) substr( $current, strrpos( $current, '|' ) + 1 );
+			}
 			if ( $until < time() ) {
-				update_option( $key, (string) ( time() + 25 ), false );
-				$got = true;
-				break;
+				delete_option( $key );
+				if ( add_option( $key, $token . '|' . ( time() + 25 ), '', false ) ) {
+					$got = true;
+					break;
+				}
 			}
 			usleep( 200000 );
 		}
@@ -798,7 +820,10 @@ class Chandpay_Service {
 			return call_user_func( $callback );
 		} finally {
 			self::$held--;
-			delete_option( $key );
+			$current = (string) get_option( $key, '' );
+			if ( 0 === strpos( $current, $token . '|' ) ) {
+				delete_option( $key );
+			}
 		}
 	}
 }
