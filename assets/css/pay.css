@@ -1,0 +1,72 @@
+.chandpay-wrap {
+	max-width: 40rem;
+	margin: 2rem auto;
+	padding: 1rem 1.25rem 3rem;
+}
+
+.chandpay-card {
+	border: 1px solid #d9d9d9;
+	padding: 1rem 1.25rem;
+	margin: 1rem 0;
+}
+
+.chandpay-row {
+	display: flex;
+	justify-content: space-between;
+	gap: 1rem;
+	margin: 0.4rem 0;
+}
+
+.chandpay-remaining {
+	font-size: 1.15rem;
+	font-weight: 600;
+}
+
+.chandpay-error,
+.chandpay-info {
+	padding: 0.8rem 1rem;
+}
+
+.chandpay-error {
+	background: #fde8e8;
+}
+
+.chandpay-info {
+	background: #eef6ff;
+}
+
+.chandpay-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.75rem;
+	align-items: center;
+}
+
+.chandpay-actions form {
+	margin: 0;
+}
+
+.chandpay-wrap fieldset {
+	border: 0;
+	margin: 0 0 1rem;
+	padding: 0;
+}
+
+.chandpay-wrap label {
+	display: block;
+	margin: 0.4rem 0;
+}
+
+.chandpay-wrap input[type="text"] {
+	width: 100%;
+	max-width: 18rem;
+	padding: 0.45rem 0.6rem;
+}
+
+.chandpay-wrap button,
+.chandpay-button {
+	display: inline-block;
+	padding: 0.55rem 1rem;
+	text-decoration: none;
+	cursor: pointer;
+}
