@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Chandpay for WooCommerce
  * Description:       Pay one WooCommerce order across several installment providers.
- * Version:           0.1.0
+ * Version:           0.1.5
  * Requires at least: 5.8
  * Requires PHP:      7.4
  * Requires Plugins:  woocommerce
@@ -19,7 +19,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'CHANDPAY_VERSION', '0.1.0' );
+define( 'CHANDPAY_VERSION', '0.1.5' );
 define( 'CHANDPAY_FILE', __FILE__ );
 define( 'CHANDPAY_PATH', plugin_dir_path( __FILE__ ) );
 define( 'CHANDPAY_URL', plugin_dir_url( __FILE__ ) );

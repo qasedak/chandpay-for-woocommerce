@@ -66,7 +66,7 @@
 		}
 		var parsed = parseAmount(amount);
 		if (parsed === null) {
-			return 'مبلغ این بخش را وارد کنید.';
+			return 'مبلغ این مرحله را وارد کنید.';
 		}
 		if (payable.rial === null) {
 			return '';
@@ -84,7 +84,7 @@
 		}
 		var min = chosen ? Number(chosen.min) : 0;
 		if (min > 0 && charged < min) {
-			return chosen.minLabel ? 'این درگاه حداقل ' + chosen.minLabel + ' می‌خواهد.' : 'مبلغ این بخش از حداقل درگاه کمتر است.';
+			return chosen.minLabel ? 'این درگاه حداقل ' + chosen.minLabel + ' می‌خواهد.' : 'مبلغ این مرحله از حداقل درگاه کمتر است.';
 		}
 		return '';
 	}
@@ -164,7 +164,7 @@
 		var eventRegistration = props && props.eventRegistration ? props.eventRegistration : {};
 		var emitResponse = props && props.emitResponse ? props.emitResponse : {};
 		var onPaymentSetup = eventRegistration.onPaymentSetup;
-		var providerState = useState(providers.length ? providers[0].id : '');
+		var providerState = useState('');
 		var amountState = useState('');
 		var payableState = useState(fallbackPayable);
 		var provider = providerState[0];
@@ -229,67 +229,88 @@
 		}, [onPaymentSetup, emitResponse, provider, amount, payable]);
 
 		var choices = providers.map(function (item) {
-			return el('label', { key: item.id, className: 'chandpay-choice' },
-				el('input', {
-					type: 'radio',
-					name: 'chandpay_provider_block',
-					value: item.id,
-					checked: provider === item.id,
-					onChange: function () { setProvider(item.id); }
-				}),
-				item.logo ? el('img', { className: 'chandpay-logo', src: item.logo, alt: '' }) : null,
-				el('span', { className: 'chandpay-choice-body' },
+			var selected = provider === item.id;
+			var itemParsed = selected ? parsed : null;
+			var itemProblem = selected ? problem : '';
+			var itemExcess = selected && itemParsed !== null && isFinite(totalNumber) ? itemParsed - totalNumber : 0;
+			var itemBelowMin = selected && itemProblem.indexOf('حداقل') !== -1;
+			var remainderClass = 'chandpay-remainder';
+			var remainderLabel = 'باقی‌مانده بعد از این مبلغ';
+			var remainderValue = null;
+			if (selected && itemProblem && itemParsed !== null && (itemExcess > 0 || itemProblem.indexOf('سقف') !== -1)) {
+				remainderClass += ' is-over';
+				remainderLabel = itemExcess > 0 ? format(itemExcess) + ' بیشتر از باقی‌مانده است' : itemProblem;
+			} else if (itemBelowMin) {
+				remainderClass += ' is-invalid';
+				remainderLabel = itemProblem;
+			} else if (selected && isFinite(totalNumber)) {
+				var left = Math.max(0, totalNumber - (itemParsed === null ? 0 : itemParsed));
+				remainderValue = format(left);
+			}
+			var amountId = 'chandpay-block-amount-' + item.id;
+
+			return el('div', {
+				key: item.id,
+				className: 'chandpay-choice-item' + (selected ? ' is-selected' : '')
+			},
+				el('label', { className: 'chandpay-choice' },
+					el('input', {
+						type: 'radio',
+						name: 'chandpay_provider_block',
+						value: item.id,
+						checked: selected,
+						onChange: function () {
+							setProvider(item.id);
+							setAmount('');
+						}
+					}),
+					item.logo ? el('img', { className: 'chandpay-logo', src: item.logo, alt: '' }) : null,
 					el('span', { className: 'chandpay-choice-name' }, item.label)
-				)
+				),
+				selected ? el('div', { className: 'chandpay-choice-amount' },
+					el('div', { className: 'chandpay-field' },
+						el('div', { className: 'chandpay-field-head' },
+							el('label', { htmlFor: amountId }, 'مبلغ این مرحله'),
+							el('button', {
+								type: 'button',
+								className: 'chandpay-text-button chandpay-fill-remaining',
+								onClick: function () { setAmount(payable.store || ''); }
+							}, 'کل باقی‌مانده')
+						),
+						el('div', { className: 'chandpay-control' },
+							el('input', {
+								id: amountId,
+								className: 'chandpay-amount-input',
+								type: 'text',
+								inputMode: 'decimal',
+								autoComplete: 'off',
+								'aria-invalid': itemProblem && itemParsed !== null ? true : false,
+								value: amount,
+								onChange: function (event) { setAmount(event.target.value); }
+							}),
+							symbol ? el('span', { className: 'chandpay-unit' }, symbol) : null
+						),
+						amount.trim() !== '' ? el('p', { className: 'chandpay-amount-note is-visible' },
+							'مبلغ اولیه را پرداخت کنید تا سفارش شما رزرو شود.',
+							el('br', null),
+							'باقی‌مانده مبلغ را می‌توانید از طریق سایر روش‌های پرداخت اعتباری و آنلاین پرداخت کنید.'
+						) : null,
+						el('p', { className: remainderClass },
+							el('span', { className: 'chandpay-remainder-label' }, remainderLabel),
+							remainderValue === null ? null : el('strong', { className: 'chandpay-live-remaining' }, remainderValue)
+						)
+					)
+				) : null
 			);
 		});
-
-		var remainderClass = 'chandpay-remainder';
-		var remainderLabel = 'باقی‌مانده بعد از این مبلغ';
-		var remainderValue = null;
-		if (problem && parsed !== null && (excess > 0 || problem.indexOf('سقف') !== -1)) {
-			remainderClass += ' is-over';
-			remainderLabel = excess > 0 ? format(excess) + ' بیشتر از باقی‌مانده است' : problem;
-		} else if (belowMin) {
-			remainderClass += ' is-invalid';
-			remainderLabel = problem;
-		} else if (isFinite(totalNumber)) {
-			var left = Math.max(0, totalNumber - (parsed === null ? 0 : parsed));
-			remainderValue = format(left);
-		}
 
 		return el('div', { className: 'chandpay-checkout', dir: 'rtl' },
 			description ? el('p', { className: 'chandpay-lead' }, description) : null,
 			providers.length ? el('fieldset', { className: 'chandpay-choices' },
 				el('legend', null, 'برای شروع اولین درگاه را انتخاب کنید'),
+				el('p', { className: 'chandpay-choices-desc' }, 'می‌توانید مبلغ باقی‌مانده را در مراحل بعدی از سایر درگاه‌های اعتباری (اقساطی) پرداخت کنید.'),
 				choices
-			) : el('p', { className: 'chandpay-note is-error' }, 'هیچ درگاهی تنظیم نشده است.'),
-			providers.length ? el('div', { className: 'chandpay-field' },
-				el('div', { className: 'chandpay-field-head' },
-					el('label', { htmlFor: 'chandpay-block-amount' }, 'مبلغ این بخش'),
-					el('button', {
-						type: 'button',
-						className: 'chandpay-text-button',
-						onClick: function () { setAmount(payable.store || ''); }
-					}, 'کل باقی‌مانده')
-				),
-				el('div', { className: 'chandpay-control' },
-					el('input', {
-						id: 'chandpay-block-amount',
-						type: 'text',
-						inputMode: 'decimal',
-						autoComplete: 'off',
-						'aria-invalid': problem && parsed !== null ? true : false,
-						value: amount,
-						onChange: function (event) { setAmount(event.target.value); }
-					}),
-					symbol ? el('span', { className: 'chandpay-unit' }, symbol) : null
-				),
-				remainderValue === null && remainderLabel === 'باقی‌مانده بعد از این مبلغ' ? null : el('p', { className: remainderClass },
-					el('span', { className: 'chandpay-remainder-label' }, remainderLabel),
-					remainderValue === null ? null : el('strong', null, remainderValue)
-				)
-			) : null
+			) : el('p', { className: 'chandpay-note is-error' }, 'هیچ درگاهی تنظیم نشده است.')
 		);
 	}
 

@@ -183,18 +183,77 @@
 	min-inline-size: 0;
 }
 
+.chandpay-choice-item {
+	display: grid;
+	min-inline-size: 0;
+}
+
+.chandpay-choice-item .chandpay-choice {
+	border-end-start-radius: 10px;
+	border-end-end-radius: 10px;
+}
+
+.chandpay-choice-item:has(input:checked) .chandpay-choice,
+.chandpay-choice-item.is-selected .chandpay-choice {
+	border-end-start-radius: 0;
+	border-end-end-radius: 0;
+	border-block-end-color: rgba(0, 0, 0, 0.06);
+}
+
+.chandpay-choice-amount {
+	display: none;
+	padding: 0 0.65rem 0.75rem;
+	border: 1px solid var(--cp-accent);
+	border-block-start: 0;
+	border-radius: 0 0 10px 10px;
+	background: #fff8f3;
+}
+
+.chandpay-choice-item:has(input:checked) .chandpay-choice-amount,
+.chandpay-choice-item.is-selected .chandpay-choice-amount {
+	display: block;
+}
+
+.chandpay-choice-amount .chandpay-field {
+	margin: 0.35rem 0 0;
+}
+
 .chandpay-choices legend,
 .chandpay-checkout legend {
-	margin: 0 0 0.55rem;
+	margin: 0 0 0.35rem;
 	padding: 0;
 	font-size: 0.95rem;
 	font-weight: 700;
 }
 
+.chandpay-choices-desc {
+	margin: 0 0 0.75rem;
+	padding: 0;
+	color: var(--cp-muted);
+	font-size: 0.92rem;
+	line-height: 1.55;
+}
+
+.chandpay-amount-note {
+	display: none;
+	margin: 0.5rem 0 0;
+	padding: 0;
+	color: var(--cp-muted);
+	font-size: 0.88rem;
+	line-height: 1.55;
+}
+
+.chandpay-amount-note.is-visible {
+	display: block;
+}
+
 .chandpay-choice {
 	display: flex;
+	flex-direction: row;
+	flex-wrap: nowrap;
 	align-items: center;
-	gap: 0.7rem;
+	column-gap: 0.65rem;
+	row-gap: 0;
 	margin: 0;
 	padding: 0.7rem 0.8rem;
 	border: 1px solid var(--cp-line);
@@ -210,7 +269,6 @@
 .chandpay-choice:has(input:checked) {
 	border-color: var(--cp-accent);
 	background: #fff8f3;
-	box-shadow: inset -3px 0 0 var(--cp-accent);
 }
 
 .chandpay-choice:has(:focus-visible) {
@@ -229,20 +287,20 @@
 
 .chandpay-logo {
 	display: block;
-	width: 2.5rem;
-	height: 2.5rem;
+	width: 30px;
+	height: 30px;
+	max-width: 30px;
+	margin: 0;
 	object-fit: contain;
 	flex: none;
-	border-radius: 8px;
+	border-radius: 6px;
 }
 
-.chandpay-choice-body {
-	display: flex;
-	flex: 1 1 auto;
-	flex-direction: column;
-	align-items: flex-start;
-	gap: 0.1rem;
+.chandpay-choice-name {
+	flex: 0 1 auto;
 	min-width: 0;
+	margin: 0;
+	line-height: 1.35;
 }
 
 .chandpay-field {
@@ -433,6 +491,7 @@
 .chandpay-text-button:hover,
 .chandpay-text-button:focus {
 	color: var(--cp-button);
+	background: none;
 }
 
 .chandpay-text-button:focus-visible {
@@ -452,6 +511,46 @@
 	margin-bottom: 0.85rem;
 }
 
+.woocommerce-checkout .payment_box label.chandpay-choice,
+.woocommerce-checkout .payment_method_chandpay label.chandpay-choice,
+.wc-block-components-radio-control-accordion-content .chandpay-checkout label.chandpay-choice {
+	display: flex !important;
+	flex-direction: row !important;
+	flex-wrap: nowrap !important;
+	align-items: center !important;
+	width: 100%;
+	column-gap: 0.65rem !important;
+}
+
+.woocommerce-checkout .payment_box .chandpay-choice .chandpay-logo,
+.wc-block-components-radio-control-accordion-content .chandpay-checkout .chandpay-choice .chandpay-logo {
+	float: none;
+	width: 30px !important;
+	height: 30px !important;
+	max-width: 30px !important;
+	margin: 0 !important;
+	vertical-align: middle;
+}
+
+.woocommerce-checkout .payment_box .chandpay-choice .chandpay-choice-name,
+.wc-block-components-radio-control-accordion-content .chandpay-checkout .chandpay-choice .chandpay-choice-name {
+	margin: 0 !important;
+}
+
+.woocommerce-checkout .payment_box label.chandpay-choice input[type="radio"],
+.wc-block-components-radio-control-accordion-content .chandpay-checkout label.chandpay-choice input[type="radio"],
+.woocommerce-checkout .payment_method_chandpay label.chandpay-choice input[type="radio"] {
+	float: none !important;
+	position: static !important;
+	width: 1.05rem !important;
+	min-width: 1.05rem !important;
+	max-width: 1.05rem !important;
+	height: 1.05rem !important;
+	margin: 0 !important;
+	padding: 0 !important;
+	flex: none;
+}
+
 .chandpay-checkout .chandpay-field {
 	margin-bottom: 0.2rem;
 }
@@ -459,11 +558,6 @@
 .woocommerce-checkout .chandpay-checkout .chandpay-control input[type="text"],
 .wc-block-components-radio-control-accordion-content .chandpay-checkout .chandpay-control input[type="text"] {
 	width: auto !important;
-}
-
-.woocommerce-checkout .chandpay-checkout .chandpay-choice input[type="radio"],
-.wc-block-components-radio-control-accordion-content .chandpay-checkout .chandpay-choice input[type="radio"] {
-	width: 1.05rem !important;
 }
 
 @media (min-width: 520px) {
