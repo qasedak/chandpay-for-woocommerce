@@ -218,7 +218,7 @@ class Chandpay_Provider_Digipay implements Chandpay_Provider {
 				'providerId'       => $refund_id,
 				'amount'           => (int) $part['amount'],
 				'saleTrackingCode' => (string) $part['tracking_code'],
-				'description'      => 'Chandpay revert',
+				'description'      => 'Chandpay refund',
 			),
 			true
 		);
@@ -232,9 +232,10 @@ class Chandpay_Provider_Digipay implements Chandpay_Provider {
 		}
 
 		return array(
-			'ok'      => true,
-			'message' => '',
-			'refund'  => isset( $response['trackingCode'] ) ? (string) $response['trackingCode'] : '',
+			'ok'        => true,
+			'message'   => '',
+			'operation' => 'refund',
+			'refund'    => isset( $response['trackingCode'] ) ? (string) $response['trackingCode'] : '',
 		);
 	}
 

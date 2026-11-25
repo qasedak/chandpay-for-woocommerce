@@ -89,6 +89,8 @@ interface Chandpay_Provider {
 	/**
 	 * Revert, cancel, or refund a captured part.
 	 *
+	 * Success includes operation: revert, cancel, or refund.
+	 *
 	 * @param array $part Part.
 	 * @return array|WP_Error
 	 */

@@ -13,7 +13,7 @@ Pay one WooCommerce order across several installment providers.
 
 Chandpay adds one checkout method. The shopper chooses the first installment provider and amount there, pays that provider, and returns to a pay-remaining page only while part of the order is still unpaid.
 
-The order stays Pending until the first part is verified, On hold until the total is collected, then Processing after every part is settled. Revert on the order screen voids the captured parts and cancels the order.
+The order stays Pending until the first part is verified, On hold until the total is collected, then Processing after every part is settled. Each captured part on the order screen can be reverted, cancelled, or refunded on its own. That does not change the order status. Cancel the order, or set a paid order back to on hold, from the order screen. The pay-remaining page collects a gap only while the order is pending or on hold.
 
 Credentials are read from the official TorobPay, SnappPay, and DigiPay plugins when those settings exist.
 

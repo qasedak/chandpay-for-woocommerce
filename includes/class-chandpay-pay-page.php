@@ -157,7 +157,7 @@ class Chandpay_Pay_Page {
 		$remaining = Chandpay_Ledger::remaining( $state, $total );
 		$captured  = Chandpay_Ledger::sum( $state, array( 'verified', 'settled' ) );
 		$closed    = in_array( $state['phase'], array( 'voiding', 'voided' ), true )
-			|| in_array( $order->get_status(), array( 'cancelled', 'refunded', 'failed' ), true );
+			|| in_array( $order->get_status(), array( 'cancelled', 'refunded', 'failed', 'processing', 'completed' ), true );
 
 		$done = array();
 		foreach ( $state['parts'] as $part ) {

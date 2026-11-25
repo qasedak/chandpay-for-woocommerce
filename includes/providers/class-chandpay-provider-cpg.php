@@ -270,8 +270,19 @@ abstract class Chandpay_Provider_Cpg implements Chandpay_Provider {
 	 */
 	public function void( array $part ) {
 		$status = $this->remote_status( $part );
-		if ( in_array( $status, array( 'REVERT', 'CANCEL' ), true ) ) {
-			return array( 'ok' => true, 'message' => '' );
+		if ( 'REVERT' === $status ) {
+			return array(
+				'ok'        => true,
+				'message'   => '',
+				'operation' => 'revert',
+			);
+		}
+		if ( 'CANCEL' === $status ) {
+			return array(
+				'ok'        => true,
+				'message'   => '',
+				'operation' => 'cancel',
+			);
 		}
 
 		if ( 'SETTLE' === $status || 'settled' === $part['status'] ) {
@@ -280,7 +291,11 @@ abstract class Chandpay_Provider_Cpg implements Chandpay_Provider {
 
 		$reverted = $this->post( 'api/online/payment/v1/revert', array( 'paymentToken' => $part['token'] ) );
 		if ( ! is_wp_error( $reverted ) && ! empty( $reverted['successful'] ) ) {
-			return array( 'ok' => true, 'message' => '' );
+			return array(
+				'ok'        => true,
+				'message'   => '',
+				'operation' => 'revert',
+			);
 		}
 
 		return $this->cancel( $part );
@@ -329,12 +344,27 @@ abstract class Chandpay_Provider_Cpg implements Chandpay_Provider {
 			return $response;
 		}
 		if ( ! empty( $response['successful'] ) ) {
-			return array( 'ok' => true, 'message' => '' );
+			return array(
+				'ok'        => true,
+				'message'   => '',
+				'operation' => 'cancel',
+			);
 		}
 
 		$status = $this->remote_status( $part );
-		if ( in_array( $status, array( 'REVERT', 'CANCEL' ), true ) ) {
-			return array( 'ok' => true, 'message' => '' );
+		if ( 'REVERT' === $status ) {
+			return array(
+				'ok'        => true,
+				'message'   => '',
+				'operation' => 'revert',
+			);
+		}
+		if ( 'CANCEL' === $status ) {
+			return array(
+				'ok'        => true,
+				'message'   => '',
+				'operation' => 'cancel',
+			);
 		}
 
 		return new WP_Error( 'chandpay_cancel', $this->message( $response, __( 'The provider did not void this payment.', 'chandpay-for-woocommerce' ) ) );

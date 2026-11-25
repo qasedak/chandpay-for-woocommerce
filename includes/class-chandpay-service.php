@@ -381,78 +381,81 @@ class Chandpay_Service {
 	}
 
 	/**
-	 * Void every captured part and cancel the order.
+	 * Void one captured part.
 	 *
-	 * @param WC_Order $order Order.
+	 * The WooCommerce status is left alone. A finalized ledger returns to
+	 * collecting so the gap can be paid after an admin sets the order on hold.
+	 *
+	 * @param WC_Order $order   Order.
+	 * @param string   $part_id Part id.
 	 * @return array|WP_Error
 	 */
-	public static function void_all( WC_Order $order ) {
+	public static function void_part( WC_Order $order, $part_id ) {
 		return self::with_lock(
 			$order->get_id(),
-			function () use ( $order ) {
+			function () use ( $order, $part_id ) {
 				$order = wc_get_order( $order->get_id() );
 				if ( ! $order || 'chandpay' !== $order->get_payment_method() ) {
 					return new WP_Error( 'chandpay_void', __( 'This order is not a Chandpay order.', 'chandpay-for-woocommerce' ) );
 				}
 
-				$state           = self::load( $order );
-				$state['phase']  = 'voiding';
-				$errors          = array();
-				self::save( $order, $state );
-
-				foreach ( $state['parts'] as $part ) {
-					if ( 'started' === $part['status'] ) {
-						$part['status']     = 'expired';
-						$part['expired_at'] = time();
-						$state              = Chandpay_Ledger::replace( $state, $part );
-						continue;
-					}
-					if ( ! in_array( $part['status'], array( 'verified', 'settled' ), true ) ) {
-						continue;
-					}
-
-					$provider = Chandpay_Registry::get( $part['provider'] );
-					if ( ! $provider ) {
-						$part['last_error'] = __( 'The provider adapter is missing.', 'chandpay-for-woocommerce' );
-						$errors[]           = $part['id'];
-						$state              = Chandpay_Ledger::replace( $state, $part );
-						continue;
-					}
-
-					if ( ! empty( $provider->capabilities()['refund'] ) && empty( $part['refund_reference'] ) ) {
-						$part['refund_reference'] = substr( 'rf' . $order->get_id() . $part['id'] . time(), 0, 100 );
-						$state                    = Chandpay_Ledger::replace( $state, $part );
-						self::save( $order, $state );
-					}
-
-					$result = $provider->void( $part );
-					if ( is_wp_error( $result ) ) {
-						$part['last_error'] = $result->get_error_message();
-						$errors[]           = $provider->label() . ': ' . $part['last_error'];
-					} else {
-						$part['status']     = 'voided';
-						$part['voided_at']  = time();
-						$part['last_error'] = '';
-					}
-					$state = Chandpay_Ledger::replace( $state, $part );
+				$state = self::load( $order );
+				$part  = Chandpay_Ledger::find( $state, $part_id );
+				if ( ! $part || ! in_array( $part['status'], array( 'verified', 'settled' ), true ) ) {
+					return new WP_Error( 'chandpay_void', __( 'This payment can no longer be undone.', 'chandpay-for-woocommerce' ) );
 				}
 
-				self::save( $order, $state );
-				if ( Chandpay_Ledger::has_capture( $state ) ) {
-					$state['phase'] = 'collecting';
+				$provider = Chandpay_Registry::get( $part['provider'] );
+				if ( ! $provider ) {
+					$part['last_error'] = __( 'The provider adapter is missing.', 'chandpay-for-woocommerce' );
+					self::save( $order, Chandpay_Ledger::replace( $state, $part ) );
+
+					return new WP_Error( 'chandpay_void', $part['last_error'] );
+				}
+
+				if ( ! empty( $provider->capabilities()['refund'] ) && empty( $part['refund_reference'] ) ) {
+					$part['refund_reference'] = substr( 'rf' . $order->get_id() . $part['id'] . time(), 0, 100 );
+					$state                    = Chandpay_Ledger::replace( $state, $part );
 					self::save( $order, $state );
-					$order->add_order_note( __( 'Chandpay could not void every payment, so the order was not cancelled.', 'chandpay-for-woocommerce' ) . ' ' . implode( ' | ', $errors ) );
-					$order->save();
-					self::sync( $order, $state );
-
-					return new WP_Error( 'chandpay_void', implode( ' ', $errors ) );
 				}
 
-				$state['phase'] = 'voided';
+				$result = $provider->void( $part );
+				if ( is_wp_error( $result ) ) {
+					$part['last_error'] = $result->get_error_message();
+					$order->add_order_note(
+						sprintf(
+							/* translators: 1: provider name, 2: error message */
+							__( 'Chandpay could not undo %1$s: %2$s', 'chandpay-for-woocommerce' ),
+							$provider->label(),
+							$part['last_error']
+						)
+					);
+					self::save( $order, Chandpay_Ledger::replace( $state, $part ) );
+
+					return new WP_Error( 'chandpay_void', $provider->label() . ': ' . $part['last_error'] );
+				}
+
+				$operation = ( is_array( $result ) && ! empty( $result['operation'] ) ) ? (string) $result['operation'] : '';
+				if ( ! in_array( $operation, array( 'revert', 'cancel', 'refund' ), true ) ) {
+					$operation = '';
+				}
+				$part['status']         = 'voided';
+				$part['voided_at']      = time();
+				$part['void_operation'] = $operation;
+				$part['last_error']     = '';
+				$state                  = Chandpay_Ledger::replace( $state, $part );
+				$order->add_order_note(
+					self::void_note(
+						$operation,
+						$provider->label(),
+						wp_strip_all_tags( self::format_rial( (int) $part['amount'], $order ) )
+					)
+				);
+
+				if ( 'finalized' === $state['phase'] ) {
+					$state['phase'] = 'collecting';
+				}
 				self::save( $order, $state );
-				if ( ! in_array( $order->get_status(), array( 'cancelled', 'refunded' ), true ) ) {
-					$order->update_status( 'cancelled', __( 'Chandpay voided every captured payment.', 'chandpay-for-woocommerce' ) );
-				}
 
 				return array( 'ok' => true );
 			}
@@ -751,6 +754,7 @@ class Chandpay_Service {
 			'verified_at'            => 0,
 			'settled_at'             => 0,
 			'voided_at'              => 0,
+			'void_operation'         => '',
 			'expired_at'             => 0,
 			'delivered_at'           => 0,
 			'last_error'             => '',
@@ -758,6 +762,48 @@ class Chandpay_Service {
 		$part['return_url'] = self::return_url( $order, $part );
 
 		return $part;
+	}
+
+	/**
+	 * Order note for the gateway call that actually ran.
+	 *
+	 * @param string $operation revert, cancel, refund, or empty.
+	 * @param string $label     Provider name.
+	 * @param string $amount    Plain amount.
+	 * @return string
+	 */
+	private static function void_note( $operation, $label, $amount ) {
+		if ( 'revert' === $operation ) {
+			return sprintf(
+				/* translators: 1: provider name, 2: amount */
+				__( 'Chandpay reverted %1$s for %2$s.', 'chandpay-for-woocommerce' ),
+				$label,
+				$amount
+			);
+		}
+		if ( 'cancel' === $operation ) {
+			return sprintf(
+				/* translators: 1: provider name, 2: amount */
+				__( 'Chandpay cancelled %1$s for %2$s.', 'chandpay-for-woocommerce' ),
+				$label,
+				$amount
+			);
+		}
+		if ( 'refund' === $operation ) {
+			return sprintf(
+				/* translators: 1: provider name, 2: amount */
+				__( 'Chandpay refunded %1$s for %2$s.', 'chandpay-for-woocommerce' ),
+				$label,
+				$amount
+			);
+		}
+
+		return sprintf(
+			/* translators: 1: provider name, 2: amount */
+			__( 'Chandpay undid %1$s for %2$s.', 'chandpay-for-woocommerce' ),
+			$label,
+			$amount
+		);
 	}
 
 	/**

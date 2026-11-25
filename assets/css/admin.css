@@ -49,11 +49,11 @@
 	color: #8a2424;
 }
 
-.chandpay-admin-revert {
-	margin: 4px 0 0;
+.chandpay-admin-void {
+	margin: 8px 0 0;
 }
 
-.chandpay-admin-revert .button {
+.chandpay-admin-void .button {
 	width: 100%;
 	text-align: center;
 }
